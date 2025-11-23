@@ -17,7 +17,7 @@ namespace Sharp_231.Data
             try
             {
                 this.connection.Open();
-                EnsureDatabaseSetup(); // <-- Додаємо створення таблиці і даних відразу
+                EnsureDatabaseSetup();
             }
             catch (MySqlException ex)
             {
@@ -27,89 +27,117 @@ namespace Sharp_231.Data
 
         private void EnsureDatabaseSetup()
         {
-            // Створюємо таблицю, якщо її нема
-            string sqlCreateTable = @"CREATE TABLE IF NOT EXISTS Products(
+            string sqlProducts = @"CREATE TABLE IF NOT EXISTS Products(
                                         Id CHAR(36) PRIMARY KEY,
                                         Name VARCHAR(64) NOT NULL,
                                         Price DECIMAL(14,2) NOT NULL)";
-            using var cmd = new MySqlCommand(sqlCreateTable, connection);
-            cmd.ExecuteNonQuery();
+            ExecuteNonQuery(sqlProducts);
 
-            // Перевіряємо, чи є записи. Якщо ні — додаємо
-            string sqlCheck = "SELECT COUNT(*) FROM Products";
-            cmd.CommandText = sqlCheck;
-            long count = (long)cmd.ExecuteScalar();
-            if (count == 0)
-            {
-                string sqlSeed = @"INSERT INTO Products(Id, Name, Price) VALUES
-                                    ('1E7F21A1-237B-427B-BDED-1B1B32639E48','Samsung galaxy s24 Ultra',20000.00),
-                                    ('ADE91C53-C314-4CFC-8B4A-D24F19E35646','iPhone 15 pro',30000.00),
-                                    ('BC1FA982-51DD-41E9-8130-D7F0C08E07B7','Samsung s26',45000.00),
-                                    ('E3AD30F6-5FD7-4F58-8EAD-1B5E964750DA','OpePlus Pro',12000.00),
-                                    ('80AE1DB7-097B-4DE1-BB23-36A08E49A825','Google Pixel 8 Pro',8000.00)";
-                cmd.CommandText = sqlSeed;
-                cmd.ExecuteNonQuery();
-            }
+            string sqlDepartments = @"CREATE TABLE IF NOT EXISTS Departments(
+                                        Id CHAR(36) PRIMARY KEY,
+                                        Name VARCHAR(64) NOT NULL)";
+            ExecuteNonQuery(sqlDepartments);
+
+            string sqlManagers = @"CREATE TABLE IF NOT EXISTS Managers(
+                                        Id CHAR(36) PRIMARY KEY,
+                                        DepartmentId CHAR(36) NOT NULL,
+                                        Name VARCHAR(64) NOT NULL,
+                                        WorksFrom DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)";
+            ExecuteNonQuery(sqlManagers);
+
+            string sqlSales = @"CREATE TABLE IF NOT EXISTS Sales(
+                                    Id CHAR(36) PRIMARY KEY,
+                                    ManagerId CHAR(36) NOT NULL,
+                                    ProductId CHAR(36) NOT NULL,
+                                    Quantity INT NOT NULL DEFAULT 1,
+                                    Moment DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)";
+            ExecuteNonQuery(sqlSales);
         }
 
+        private void ExecuteNonQuery(string sql, Dictionary<string, object>? parameters = null)
+        {
+            using var cmd = new MySqlCommand(sql, connection);
+            if (parameters != null)
+                foreach (var p in parameters)
+                    cmd.Parameters.AddWithValue(p.Key, p.Value);
+            cmd.ExecuteNonQuery();
+        }
+
+        private T FromReader<T>(MySqlDataReader reader)
+        {
+            var t = typeof(T);
+            var ctr = t.GetConstructor(Array.Empty<Type>());
+            T res = (T)ctr!.Invoke(null);
+
+            foreach (var prop in t.GetProperties())
+            {
+                try
+                {
+                    object val = reader[prop.Name];
+                    if (val is decimal)
+                        prop.SetValue(res, Convert.ToDouble(val));
+                    else
+                        prop.SetValue(res, val);
+                }
+                catch { }
+            }
+            return res;
+        }
+
+        private List<T> ExecuteList<T>(string sql, Dictionary<string, object>? parameters = null)
+        {
+            List<T> res = new();
+            using var cmd = new MySqlCommand(sql, connection);
+            if (parameters != null)
+                foreach (var p in parameters)
+                    cmd.Parameters.AddWithValue(p.Key, p.Value);
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                res.Add(FromReader<T>(reader));
+
+            return res;
+        }
+
+        private int ExecuteScalarInt(string sql, Dictionary<string, object>? parameters = null)
+        {
+            using var cmd = new MySqlCommand(sql, connection);
+            if (parameters != null)
+                foreach (var p in parameters)
+                    cmd.Parameters.AddWithValue(p.Key, p.Value);
+
+            return Convert.ToInt32(cmd.ExecuteScalar());
+        }
+
+        // -------------------- PRODUCTS --------------------
         public List<Product> GetProducts()
         {
-            List<Product> products = new List<Product>();
-            string sql = "SELECT * FROM Products";
-
-            using var cmd = new MySqlCommand(sql, connection);
-            try
-            {
-                using var reader = cmd.ExecuteReader();
-                while (reader.Read())
-                {
-                    products.Add(Product.FromReader(reader));
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Failed: {0}", ex.Message);
-            }
-            return products;
+            return ExecuteList<Product>("SELECT * FROM Products");
         }
 
-        // Інші методи друку залишаються такими ж
-        public void PrintNP()
+        public void PrintNP() => GetProducts().OrderBy(p => p.Price).ToList().ForEach(p => Console.WriteLine($"{p.Name} -- {p.Price:F2}"));
+        public void PrintDesc() => GetProducts().OrderByDescending(p => p.Price).ToList().ForEach(p => Console.WriteLine($"{p.Name} -- {p.Price:F2}"));
+        public void PrintAlphabet() => GetProducts().OrderBy(p => p.Name).ToList().ForEach(p => Console.WriteLine($"{p.Name} -- {p.Price:F2}"));
+        public void PrintLoser() => GetProducts().OrderBy(p => p.Price).Take(3).ToList().ForEach(p => Console.WriteLine($"{p.Name} -- {p.Price:F2}"));
+        public void PrintTop() => GetProducts().OrderByDescending(p => p.Price).Take(3).ToList().ForEach(p => Console.WriteLine($"{p.Name} -- {p.Price:F2}"));
+
+        // -------------------- SALES --------------------
+        public int GetSalesCountByMonth(int month, int year)
         {
-            foreach (var p in GetProducts().OrderBy(p => p.Price))
-                Console.WriteLine("{0}) -- {1:F2}", p.Name, p.Price);
+            string sql = @"SELECT COUNT(*) FROM Sales 
+                           WHERE MONTH(Moment) = @month AND YEAR(Moment) = @year";
+            return ExecuteScalarInt(sql, new() { ["@month"] = month, ["@year"] = year });
         }
 
-        public void PrintDesc()
+        public (int currentYear, int previousYear) GetSalesInfoByMonth(int month)
         {
-            foreach (var p in GetProducts().OrderByDescending(p => p.Price))
-                Console.WriteLine("{0}) -- {1:F2}", p.Name, p.Price);
-        }
+            int currentYear = DateTime.Now.Year;
+            int previousYear = currentYear - 1;
 
-        public void PrintAlphabet()
-        {
-            foreach (var p in GetProducts().OrderBy(p => p.Name))
-                Console.WriteLine("{0}) -- {1:F2}", p.Name, p.Price);
-        }
+            int current = GetSalesCountByMonth(month, currentYear);
+            int previous = GetSalesCountByMonth(month, previousYear);
 
-        public void PrintLoser()
-        {
-            foreach (var p in GetProducts().OrderBy(p => p.Price).Take(3))
-                Console.WriteLine("{0}) -- {1:F2}", p.Name, p.Price);
-        }
-
-        public void PrintTop()
-        {
-            foreach (var p in GetProducts().OrderByDescending(p => p.Price).Take(3))
-                Console.WriteLine("{0}) -- {1:F2}", p.Name, p.Price);
-        }
-
-        public void PrintRandom()
-        {
-            var rnd = new Random();
-            var randomProducts = GetProducts().OrderBy(p => rnd.Next()).Take(3).ToList();
-            foreach (var p in randomProducts)
-                Console.WriteLine("{0}) -- {1:F2}", p.Name, p.Price);
+            return (current, previous);
         }
     }
 }
