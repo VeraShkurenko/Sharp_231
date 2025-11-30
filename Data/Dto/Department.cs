@@ -10,10 +10,7 @@ namespace Sharp_231.Data.Dto
     {
         public Guid Id { get; set; }
         public String Name { get; set; } = null!;
-
-        public override string ToString()
-        {
-            return $"{Id.ToString()[..3]}... {Name}";
-        }
+        
+        public override string ToString() => $"{Id} - {Name}";
     }
 }

@@ -12,5 +12,7 @@ namespace Sharp_231.Data.Dto
         public Guid DepartmentId { get; set; }
         public String Name { get; set; } = null!;
         public DateTime WorksFrom { get; set; }
+        public override string ToString() => $"{Id} - {Name} ({WorksFrom:yyyy-MM-dd}) - Dept: {DepartmentId}";
+
     }
 }
