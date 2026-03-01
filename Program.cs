@@ -16,6 +16,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using Sharp_231.AsyncProgramming;
 using Sharp_231.Networking;
+using SharpKnP321.Networking;
 
 Console.OutputEncoding = Encoding.UTF8;
 Console.InputEncoding = Encoding.UTF8;
@@ -38,9 +39,11 @@ try
   // new Continuations().Run();
   // new NetworkingDemo().RunSite();
   // await new NetworkingDemo().RunXml();
+  // NetworkingDemo demo = new();
+  // await demo.RunMoonHomework();
+
+  new EmailDemo().Run();
   
-  NetworkingDemo demo = new();
-  await demo.RunMoonHomework();
 }
 catch (Exception ex)
 {
