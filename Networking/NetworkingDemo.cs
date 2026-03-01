@@ -9,6 +9,8 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using SharpKnP321.Networking.Api;
+using SharpKnP321.Networking.Orm;
 
 namespace Sharp_231.Networking
 {
@@ -50,7 +52,36 @@ namespace Sharp_231.Networking
             ];
             Console.WriteLine(String.Join('\n', rates));
         }
+        public async Task RunMoonHomework()
+        {
+            Console.WriteLine("\n--- Домашнє завдання: Фаза місяця ---");
+            MoonApi moonApi = new();
 
+            Console.Write("Введіть дату (дд.мм.рррр): ");
+            string? input = Console.ReadLine();
+
+            if (DateOnly.TryParse(input, out DateOnly userDate))
+            {
+                try 
+                {
+                    // Виклик API через наш сервіс
+                    MoonPhase phase = await moonApi.PhaseByDateAsync(userDate);
+            
+                    Console.WriteLine($"\nРезультат для {userDate:dd.MM.yyyy}:");
+                    Console.WriteLine($"Назва фази: {phase.PhaseName}");
+                    Console.WriteLine($"Освітленість: {phase.Lighting:F2}%");
+                    Console.WriteLine($"Віджет: {phase.NpWidget}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Помилка: {ex.Message}");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Некоректний формат дати.");
+            }
+        }
         public async Task RunXml()
         {
             Console.WriteLine("Курси валют НБУ, робота з XML");
