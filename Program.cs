@@ -30,7 +30,11 @@ try
     //Console.InputEncoding = System.Text.Encoding.Unicode;
     // new DictDemo().Run();
     // new DataDemo().Run();
-    new AsyncProgramming().Run();
+    //new AsyncProgramming().Run();
+    // new ThreadJoin().Run();
+    // new AsyncDemo().Run();
+    // await new AsyncDemo().Run();
+    new Continuations().Run();
 }
 catch (Exception ex)
 {
