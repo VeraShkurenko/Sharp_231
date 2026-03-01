@@ -14,6 +14,8 @@ using System.ComponentModel;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Sharp_231.AsyncProgramming;
+
 Console.OutputEncoding = Encoding.UTF8;
 Console.InputEncoding = Encoding.UTF8;
 
@@ -27,7 +29,8 @@ try
     //Console.OutputEncoding = System.Text.Encoding.Unicode;
     //Console.InputEncoding = System.Text.Encoding.Unicode;
     // new DictDemo().Run();
-     new DataDemo().Run();
+    // new DataDemo().Run();
+    new AsyncProgramming().Run();
 }
 catch (Exception ex)
 {
